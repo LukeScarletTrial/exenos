@@ -1,0 +1,71 @@
+name: iOS ARM64 Build (Unsigned)
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  build-c-binaries:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build ExenosEngine
+        working-directory: ./ExenosEngine
+        run: |
+          make clean
+          make
+          make install
+
+      - name: Archive C Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: exenos-c-binaries
+          path: ExenosIDE/libs/libexenos.dylib
+
+  build-maui-app:
+    runs-on: macos-14
+    needs: build-c-binaries
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install MAUI Workload
+        run: dotnet workload install maui-ios
+
+      - name: Download C Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: exenos-c-binaries
+          path: ExenosIDE/libs/
+
+      - name: Restore & Build (Unsigned)
+        working-directory: ./ExenosIDE
+        run: |
+          dotnet restore
+          dotnet build -f net8.0-ios -c Release \
+            /p:BuildIpa=true \
+            /p:EnableCodeSigning=false \
+            /p:CodesignKey="-" \
+            /p:CodesignProvision="-"
+
+      - name: Force Ad-Hoc Signature
+        run: |
+          # This ensures the IPA bundle is structurally valid for sideloading tools
+          IPA_PATH=$(find ExenosIDE/bin/Release/net8.0-ios/ios-arm64 -name "*.ipa" | head -1)
+          if [ -n "$IPA_PATH" ]; then
+            codesign --force --sign - --entitlements ExenosIDE/Platforms/iOS/Entitlements.plist "$IPA_PATH" || true
+          fi
+
+      - name: Upload Exenos IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Exenos-Unsigned-IPA
+          path: ExenosIDE/bin/Release/net8.0-ios/ios-arm64/*.ipa
