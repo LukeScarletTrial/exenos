@@ -1,6 +1,8 @@
 #ifndef LUAZ_METAL_H
 #define LUAZ_METAL_H
 
+#import <QuartzCore/CAMetalLayer.h>
+#import <Metal/Metal.h>
 #include <Metal/Metal.h>
 #include "luaz_core.h"
 
