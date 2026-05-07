@@ -1,6 +1,7 @@
 #ifndef LUAZ_RELOAD_H
 #define LUAZ_RELOAD_H
 
+#include <dispatch/dispatch.h>
 #include "luaz_core.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
